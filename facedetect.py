@@ -3,17 +3,19 @@ import numpy
 import cv2
 import sys
 import os
+import os.path
 import re
 
 
 def input_arg(argvs, argc):
-    if (argc != 2):   # 引数が足りない場合は、その旨を表示
-        print 'Usage: # python %s filename' % argvs[0]
+    if (argc != 3):   # 引数が足りない場合は、その旨を表示
+        print 'Usage: # python %s srcdirectory outputdirectory' % argvs[0]
         quit()        # プログラムの終了
 
     print 'Input directoryname = %s' % argvs[1]
+    print 'Output directoryname = %s' % argvs[2]
     # 引数でとったディレクトリの文字列をリターン
-    return argvs[1]
+    return argvs
 
 
 def input_filename(directory_path):
@@ -31,8 +33,16 @@ def input_filename(directory_path):
     return file_array
 
 
+def create_directory(output_directory):
+    if os.path.isdir(output_directory) == 0:
+        print "Not exist \"%s\" folder. So create it." % output_directory
+        os.makedirs(output_directory)
+    else:
+        print "Exist \"%s\" folder." % output_directory
+
+
 #イメージのパスと名前付けに使う数字のはじめの数字
-def facedetect(image_path, num):
+def facedetect(image_path, output_directory, num):
     #ファイル読み込み
     image = cv2.imread(image_path)
     #グレースケール変換
@@ -57,7 +67,7 @@ def facedetect(image_path, num):
         image_path = image_path.rstrip(".jpg")
         image_path = image_path.rstrip(".png")
         # ファイルネームの決定
-        img_name = "./output/" + image_path + "_" + str(num) + '.jpg'
+        img_name = "./" + output_directory + "/" + image_path + "_" + str(num) + '.jpg'
         # 出力窓を調整
         cv2.imwrite(img_name, image[y-h*0.2:y+h*1.2, x-w*0.2:x+h*1.2])
         num += 1
@@ -70,15 +80,18 @@ if __name__ == "__main__":
     argvs = sys.argv   # コマンドライン引数を格納したリストの取得
     argc = len(argvs)  # 引数の個数
 
+    directory = input_arg(argvs, argc)
     # まず元画像があるディレクトリを持ってくる
-    image_path = input_arg(argvs, argc)
+    image_path = directory[1]
     # file_namesにディレクトリ込みのファイルネームを格納
     file_names = input_filename(image_path)
+    #引数にとった出力先ディレクトリの存在確認 & 作成
+    create_directory(directory[2])
 
     num = 1
     # 元画像のファイルの数だけ顔認識を続ける
     for file_name in file_names:
         print file_name
-        facedetect(file_name, num)
+        facedetect(file_name, directory[2], num)
 
     print "Complete !"
