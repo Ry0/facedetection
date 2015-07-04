@@ -7,22 +7,15 @@
 #include <iterator>
 #include <stdio.h>
 
+#include <sys/stat.h> // ディレクトリ・ファイル名の確認
+#include <sys/types.h> // ディレクトリ作成
+
 using namespace std;
 using namespace cv;
 
 static void help()
 {
-    cout << "\nThis program demonstrates the cascade recognizer. Now you can use Haar or LBP features.\n"
-            "This classifier can recognize many kinds of rigid objects, once the appropriate classifier is trained.\n"
-            "It's most known use is for faces.\n"
-            "Usage:\n"
-            "./facedetect [--cascade=<cascade_path> this is the primary trained classifier such as frontal face]\n"
-               "   [--nested-cascade[=nested_cascade_path this an optional secondary classifier such as eyes]]\n"
-               "   [--scale=<image scale greater or equal to 1, try 1.3 for example>]\n"
-               "   [--try-flip]\n"
-               "   [filename|camera_index]\n\n"
-            "see facedetect.cmd for one call:\n"
-            "./facedetect --cascade=\"../../data/haarcascades/haarcascade_frontalface_alt.xml\" --nested-cascade=\"../../data/haarcascades/haarcascade_eye.xml\" --scale=1.3\n\n"
+  cout <<   "./facedetect --input=\"directory\" --output=\"directory\"\n\n"
             "During execution:\n\tHit any key to quit.\n"
             "\tUsing OpenCV version " << CV_VERSION << "\n" << endl;
 }
@@ -31,162 +24,190 @@ void detectAndDraw( Mat& img, CascadeClassifier& cascade,
                     CascadeClassifier& nestedCascade,
                     double scale, bool tryflip );
 
-string cascadeName = "../../data/haarcascades/haarcascade_frontalface_alt.xml";
-string nestedCascadeName = "../../data/haarcascades/haarcascade_eye_tree_eyeglasses.xml";
+string cascadeName = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
 
 int main( int argc, const char** argv )
 {
-    CvCapture* capture = 0;
-    Mat frame, frameCopy, image;
-    const string scaleOpt = "--scale=";
-    size_t scaleOptLen = scaleOpt.length();
-    const string cascadeOpt = "--cascade=";
-    size_t cascadeOptLen = cascadeOpt.length();
-    const string nestedCascadeOpt = "--nested-cascade";
-    size_t nestedCascadeOptLen = nestedCascadeOpt.length();
-    const string tryFlipOpt = "--try-flip";
-    size_t tryFlipOptLen = tryFlipOpt.length();
-    string inputName;
-    bool tryflip = false;
+  CvCapture* capture = 0;
+  Mat frame, frameCopy, image;
+  string inputDir = "--input=";
+  size_t inputDirLen = inputDir.length();
+  bool isInputDir = false;
+  string outputDir = "--output=";
+  size_t outputDirLen = outputDir.length();
+  bool isOutputDir = false;
 
-    help();
+  string inputName;
+  bool tryflip = false;
 
-    CascadeClassifier cascade, nestedCascade;
-    double scale = 1;
+  help();
 
-    for( int i = 1; i < argc; i++ )
+  CascadeClassifier cascade,nestedCascade;
+  double scale = 1;
+
+  // 引数処理
+  for( int i = 1; i < argc; i++ )
     {
-        cout << "Processing " << i << " " <<  argv[i] << endl;
-        if( cascadeOpt.compare( 0, cascadeOptLen, argv[i], cascadeOptLen ) == 0 )
+	  cout << "Processing " << i << " " <<  argv[i] << endl;
+	  if( inputDir.compare( 0, inputDirLen, argv[i], inputDirLen) == 0)
+		{
+		  inputDir.assign( argv[i] + inputDirLen);
+		  cout << "input directory = " << inputDir << endl;
+		  isInputDir = true;
+		}
+	  else if( outputDir.compare( 0, outputDirLen, argv[i], outputDirLen) == 0)
+		{
+		  outputDir.assign( argv[i] + outputDirLen);
+		  cout << "output directory = " << outputDir << endl;
+		  isOutputDir = true;
+		}
+	  else if( argv[i][0] == '-' )
         {
-            cascadeName.assign( argv[i] + cascadeOptLen );
-            cout << "  from which we have cascadeName= " << cascadeName << endl;
+		  cerr << "WARNING: Unknown option %s" << argv[i] << endl;
         }
-        else if( nestedCascadeOpt.compare( 0, nestedCascadeOptLen, argv[i], nestedCascadeOptLen ) == 0 )
-        {
-            if( argv[i][nestedCascadeOpt.length()] == '=' )
-                nestedCascadeName.assign( argv[i] + nestedCascadeOpt.length() + 1 );
-            if( !nestedCascade.load( nestedCascadeName ) )
-                cerr << "WARNING: Could not load classifier cascade for nested objects" << endl;
-        }
-        else if( scaleOpt.compare( 0, scaleOptLen, argv[i], scaleOptLen ) == 0 )
-        {
-            if( !sscanf( argv[i] + scaleOpt.length(), "%lf", &scale ) || scale < 1 )
-                scale = 1;
-            cout << " from which we read scale = " << scale << endl;
-        }
-        else if( tryFlipOpt.compare( 0, tryFlipOptLen, argv[i], tryFlipOptLen ) == 0 )
-        {
-            tryflip = true;
-            cout << " will try to flip image horizontally to detect assymetric objects\n";
-        }
-        else if( argv[i][0] == '-' )
-        {
-            cerr << "WARNING: Unknown option %s" << argv[i] << endl;
-        }
-        else
-            inputName.assign( argv[i] );
+	  else
+		inputName.assign( argv[i] );
     }
 
-    if( !cascade.load( cascadeName ) )
+  // 入力画像ディレクトリの確認
+  if(! isInputDir)
+	{
+	  cerr << "No input directory... " << endl;
+	  help();
+	  return -1;
+	}
+  else
+	{
+	  struct stat st;
+	  if(stat(inputDir.c_str(), &st) != 0)
+		{
+		  cerr << "No such a directory " << inputDir << endl;
+		  return -1;
+		}
+	}
+
+  // 出力画像ディレクトリの確認
+  if(! isOutputDir)
+	{
+	  cerr << "No output directory" << endl;
+	  cout << "will make a directory \"output\"" << endl;
+	  mkdir("output", 0755); // "outputディレクトリを作成"
+	  outputDir.assign("output" + outputDirLen);
+	}
+  else
+	{
+	  struct stat st;
+	  if(stat(outputDir.c_str(), &st) != 0)
+		{
+		  cerr << "No such a directory " << outputDir << endl;
+		  cout << "will make a directory "  << outputDir << endl;
+		  mkdir(outputDir.c_str(), 0755);
+		}
+	}
+
+  if( !cascade.load( cascadeName ) )
     {
-        cerr << "ERROR: Could not load classifier cascade" << endl;
-        help();
-        return -1;
+	  cerr << "ERROR: Could not load classifier cascade" << endl;
+	  cout << "Please Check a cascade file is exist at " << 
+		"\"" << cascadeName << "\"" << endl;
+	  help();
+	  return -1;
     }
 
-    if( inputName.empty() || (isdigit(inputName.c_str()[0]) && inputName.c_str()[1] == '\0') )
+
+	return 0;
+  if( inputName.empty() || (isdigit(inputName.c_str()[0]) && inputName.c_str()[1] == '\0') )
     {
-        capture = cvCaptureFromCAM( inputName.empty() ? 0 : inputName.c_str()[0] - '0' );
-        int c = inputName.empty() ? 0 : inputName.c_str()[0] - '0' ;
-        if(!capture) cout << "Capture from CAM " <<  c << " didn't work" << endl;
+	  capture = cvCaptureFromCAM( inputName.empty() ? 0 : inputName.c_str()[0] - '0' );
+	  int c = inputName.empty() ? 0 : inputName.c_str()[0] - '0' ;
+	  if(!capture) cout << "Capture from CAM " <<  c << " didn't work" << endl;
     }
-    else if( inputName.size() )
+  else if( inputName.size() )
     {
-        image = imread( inputName, 1 );
-        if( image.empty() )
+	  image = imread( inputName, 1 );
+	  if( image.empty() )
         {
-            capture = cvCaptureFromAVI( inputName.c_str() );
-            if(!capture) cout << "Capture from AVI didn't work" << endl;
+		  capture = cvCaptureFromAVI( inputName.c_str() );
+		  if(!capture) cout << "Capture from AVI didn't work" << endl;
         }
     }
-    else
+  else
     {
-        image = imread( "lena.jpg", 1 );
-        if(image.empty()) cout << "Couldn't read lena.jpg" << endl;
+	  image = imread( "lena.jpg", 1 );
+	  if(image.empty()) cout << "Couldn't read lena.jpg" << endl;
     }
 
-    cvNamedWindow( "result", 1 );
+  cvNamedWindow( "result", 1 );
 
-    if( capture )
+  if( capture )
     {
-        cout << "In capture ..." << endl;
-        for(;;)
+	  cout << "In capture ..." << endl;
+	  for(;;)
         {
-            IplImage* iplImg = cvQueryFrame( capture );
-            frame = iplImg;
-            if( frame.empty() )
-                break;
-            if( iplImg->origin == IPL_ORIGIN_TL )
-                frame.copyTo( frameCopy );
-            else
-                flip( frame, frameCopy, 0 );
+		  IplImage* iplImg = cvQueryFrame( capture );
+		  frame = iplImg;
+		  if( frame.empty() )
+			break;
+		  if( iplImg->origin == IPL_ORIGIN_TL )
+			frame.copyTo( frameCopy );
+		  else
+			flip( frame, frameCopy, 0 );
 
-            detectAndDraw( frameCopy, cascade, nestedCascade, scale, tryflip );
+		  detectAndDraw( frameCopy, cascade, nestedCascade, scale, tryflip );
 
-            if( waitKey( 10 ) >= 0 )
-                goto _cleanup_;
+		  if( waitKey( 10 ) >= 0 )
+			goto _cleanup_;
         }
 
-        waitKey(0);
+	  waitKey(0);
 
-_cleanup_:
-        cvReleaseCapture( &capture );
+	_cleanup_:
+	  cvReleaseCapture( &capture );
     }
-    else
+  else
     {
-        cout << "In image read" << endl;
-        if( !image.empty() )
+	  cout << "In image read" << endl;
+	  if( !image.empty() )
         {
-            detectAndDraw( image, cascade, nestedCascade, scale, tryflip );
-            waitKey(0);
+		  detectAndDraw( image, cascade, nestedCascade, scale, tryflip );
+		  waitKey(0);
         }
-        else if( !inputName.empty() )
+	  else if( !inputName.empty() )
         {
-            /* assume it is a text file containing the
-            list of the image filenames to be processed - one per line */
-            FILE* f = fopen( inputName.c_str(), "rt" );
-            if( f )
+		  /* assume it is a text file containing the
+			 list of the image filenames to be processed - one per line */
+		  FILE* f = fopen( inputName.c_str(), "rt" );
+		  if( f )
             {
-                char buf[1000+1];
-                while( fgets( buf, 1000, f ) )
+			  char buf[1000+1];
+			  while( fgets( buf, 1000, f ) )
                 {
-                    int len = (int)strlen(buf), c;
-                    while( len > 0 && isspace(buf[len-1]) )
-                        len--;
-                    buf[len] = '\0';
-                    cout << "file " << buf << endl;
-                    image = imread( buf, 1 );
-                    if( !image.empty() )
+				  int len = (int)strlen(buf), c;
+				  while( len > 0 && isspace(buf[len-1]) )
+					len--;
+				  buf[len] = '\0';
+				  cout << "file " << buf << endl;
+				  image = imread( buf, 1 );
+				  if( !image.empty() )
                     {
-                        detectAndDraw( image, cascade, nestedCascade, scale, tryflip );
-                        c = waitKey(0);
-                        if( c == 27 || c == 'q' || c == 'Q' )
-                            break;
+					  detectAndDraw( image, cascade, nestedCascade, scale, tryflip );
+					  c = waitKey(0);
+					  if( c == 27 || c == 'q' || c == 'Q' )
+						break;
                     }
-                    else
+				  else
                     {
-                        cerr << "Aw snap, couldn't read image " << buf << endl;
+					  cerr << "Aw snap, couldn't read image " << buf << endl;
                     }
                 }
-                fclose(f);
+			  fclose(f);
             }
         }
     }
 
-    cvDestroyWindow("result");
+  cvDestroyWindow("result");
 
-    return 0;
+  return 0;
 }
 
 void detectAndDraw( Mat& img, CascadeClassifier& cascade,
