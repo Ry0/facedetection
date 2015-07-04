@@ -20,7 +20,7 @@ static void help()
             "\tUsing OpenCV version " << CV_VERSION << "\n" << endl;
 }
 
-
+void detectAndSave(CascadeClassifier &cascade, string &srcfilename, string &outputpath);
 string ExtractFileName(const string &path, bool without_extension);
 
 string cascadeName = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
@@ -34,12 +34,12 @@ int main( int argc, const char** argv )
   string outputDir = "--output=";
   size_t outputDirLen = outputDir.length();
   bool isOutputDir = false;
-
+  CascadeClassifier cascade;
   string inputName;
 
   help();
 
-  CascadeClassifier cascade,nestedCascade;
+
 
   // 引数処理
   for( int i = 1; i < argc; i++ )
@@ -113,12 +113,21 @@ int main( int argc, const char** argv )
   // TODO:inputディレクトリのファイル一覧を取得する
 
   string filename = "../src/test.jpg";
-  Mat inputImage = imread(filename, 1);
+  detectAndSave(cascade, filename, outputDir);
+
+  return 0;
+
+}
+
+void detectAndSave(CascadeClassifier &cascade, string &srcfilename, string &outputpath)
+{
+  Mat inputImage = imread(srcfilename, 1);
   Mat grayImage;
   cvtColor(inputImage, grayImage,  CV_RGB2GRAY);
   Mat eqalizedImage = inputImage;
   equalizeHist( grayImage, eqalizedImage );
   vector<Rect> faces;
+
   cascade.detectMultiScale( eqalizedImage, faces,
 							1.1, 2, 0
 							//|CV_HAAR_FIND_BIGGEST_OBJECT
@@ -129,8 +138,8 @@ int main( int argc, const char** argv )
   // 切り出して保存
   int num = 1;
   for (vector<Rect>::iterator iter = faces.begin(); iter != faces.end(); iter ++) {
-	string saveImgname = ExtractFileName(filename, true);
-	string saveImgpath = outputDir + "/" + saveImgname + "_" + to_string(num) + ".jpg";
+	string saveImgname = ExtractFileName(srcfilename, true);
+	string saveImgpath = outputpath + "/" + saveImgname + "_" + to_string(num) + ".jpg";
 	cout << saveImgpath << endl;
 	num++;
 	Rect newRect = Rect(iter->x - (iter->width)*0.3,
@@ -141,13 +150,7 @@ int main( int argc, const char** argv )
 	cout << newRect << endl;cout << endl;
 	imwrite(saveImgpath, inputImage(newRect));
   }
-  num = 0;
-
-  return 0;
-
 }
-
-
 
 // パスからファイル名を抽出（拡張子を除くフラグ付き）
 // http://www.slis.tsukuba.ac.jp/~fujisawa.makoto.fu/cgi-bin/wiki/index.php?string%A4%CB%A4%E8%A4%EB%CA%B8%BB%FA%CE%F3%BD%E8%CD%FD#w175146e
