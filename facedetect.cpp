@@ -40,7 +40,6 @@ int main( int argc, const char** argv )
   help();
 
   CascadeClassifier cascade,nestedCascade;
-  double scale = 1;
 
   // 引数処理
   for( int i = 1; i < argc; i++ )
@@ -134,10 +133,12 @@ int main( int argc, const char** argv )
 	string saveImgpath = outputDir + "/" + saveImgname + "_" + to_string(num) + ".jpg";
 	cout << saveImgpath << endl;
 	num++;
-	Rect newRect = Rect(iter->x - (iter->width)*0.5,
-						iter->y - (iter->height)*0.5,
-						(iter->width)*1.5,
-						(iter->height)*1.5);
+	Rect newRect = Rect(iter->x - (iter->width)*0.3,
+						iter->y - (iter->height)*0.3,
+						(iter->width)*1.6,
+						(iter->height)*1.6);
+	cout << *iter << endl;
+	cout << newRect << endl;cout << endl;
 	imwrite(saveImgpath, inputImage(newRect));
   }
   num = 0;
