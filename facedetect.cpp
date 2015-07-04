@@ -20,15 +20,13 @@ static void help()
             "\tUsing OpenCV version " << CV_VERSION << "\n" << endl;
 }
 
-void detectAndDraw( Mat& img, CascadeClassifier& cascade,
-                    CascadeClassifier& nestedCascade,
-                    double scale, bool tryflip );
+
+string ExtractFileName(const string &path, bool without_extension);
 
 string cascadeName = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
 
 int main( int argc, const char** argv )
 {
-  CvCapture* capture = 0;
   Mat frame, frameCopy, image;
   string inputDir = "--input=";
   size_t inputDirLen = inputDir.length();
@@ -38,7 +36,6 @@ int main( int argc, const char** argv )
   bool isOutputDir = false;
 
   string inputName;
-  bool tryflip = false;
 
   help();
 
@@ -118,115 +115,58 @@ int main( int argc, const char** argv )
 
   string filename = "../src/test.jpg";
   Mat inputImage = imread(filename, 1);
-  Mat grayImage, smallImg( cvRound (inputImage.rows/scale), cvRound(inputImage.cols/scale), CV_8UC1 );
+  Mat grayImage;
   cvtColor(inputImage, grayImage,  CV_RGB2GRAY);
+  Mat eqalizedImage = inputImage;
+  equalizeHist( grayImage, eqalizedImage );
   vector<Rect> faces;
-  resize( grayImage, smallImg, smallImg.size(), 0, 0, INTER_LINEAR );
-  equalizeHist( smallImg, smallImg );
-  cascade.detectMultiScale( smallImg, faces,
+  cascade.detectMultiScale( eqalizedImage, faces,
 							1.1, 2, 0
 							//|CV_HAAR_FIND_BIGGEST_OBJECT
 							//|CV_HAAR_DO_ROUGH_SEARCH
 							|CV_HAAR_SCALE_IMAGE
 							,
 							Size(30, 30) );
-      // 矩形を描く
-    for (vector<Rect>::iterator iter = faces.begin(); iter != faces.end(); iter ++) {
-	  rectangle(inputImage, *iter, Scalar(255, 0, 0), 1);
-    }
- 
-    // 表示
-    imshow("out", inputImage);
-    waitKey(0);
+  // 切り出して保存
+  int num = 1;
+  for (vector<Rect>::iterator iter = faces.begin(); iter != faces.end(); iter ++) {
+	string saveImgname = ExtractFileName(filename, true);
+	string saveImgpath = outputDir + "/" + saveImgname + "_" + to_string(num) + ".jpg";
+	cout << saveImgpath << endl;
+	num++;
+	Rect newRect = Rect(iter->x - (iter->width)*0.5,
+						iter->y - (iter->height)*0.5,
+						(iter->width)*1.5,
+						(iter->height)*1.5);
+	imwrite(saveImgpath, inputImage(newRect));
+  }
+  num = 0;
 
-	return 0;
+  return 0;
 
 }
 
-void detectAndDraw( Mat& img, CascadeClassifier& cascade,
-                    CascadeClassifier& nestedCascade,
-                    double scale, bool tryflip )
+
+
+// パスからファイル名を抽出（拡張子を除くフラグ付き）
+// http://www.slis.tsukuba.ac.jp/~fujisawa.makoto.fu/cgi-bin/wiki/index.php?string%A4%CB%A4%E8%A4%EB%CA%B8%BB%FA%CE%F3%BD%E8%CD%FD#w175146e
+string ExtractFileName(const string &path, bool without_extension = true)
 {
-    int i = 0;
-    double t = 0;
-    vector<Rect> faces, faces2;
-    const static Scalar colors[] =  { CV_RGB(0,0,255),
-        CV_RGB(0,128,255),
-        CV_RGB(0,255,255),
-        CV_RGB(0,255,0),
-        CV_RGB(255,128,0),
-        CV_RGB(255,255,0),
-        CV_RGB(255,0,0),
-        CV_RGB(255,0,255)} ;
-    Mat gray, smallImg( cvRound (img.rows/scale), cvRound(img.cols/scale), CV_8UC1 );
-
-    cvtColor( img, gray, CV_BGR2GRAY );
-    resize( gray, smallImg, smallImg.size(), 0, 0, INTER_LINEAR );
-    equalizeHist( smallImg, smallImg );
-
-    t = (double)cvGetTickCount();
-    cascade.detectMultiScale( smallImg, faces,
-        1.1, 2, 0
-        //|CV_HAAR_FIND_BIGGEST_OBJECT
-        //|CV_HAAR_DO_ROUGH_SEARCH
-        |CV_HAAR_SCALE_IMAGE
-        ,
-        Size(30, 30) );
-    if( tryflip )
-    {
-        flip(smallImg, smallImg, 1);
-        cascade.detectMultiScale( smallImg, faces2,
-                                 1.1, 2, 0
-                                 //|CV_HAAR_FIND_BIGGEST_OBJECT
-                                 //|CV_HAAR_DO_ROUGH_SEARCH
-                                 |CV_HAAR_SCALE_IMAGE
-                                 ,
-                                 Size(30, 30) );
-        for( vector<Rect>::const_iterator r = faces2.begin(); r != faces2.end(); r++ )
-        {
-            faces.push_back(Rect(smallImg.cols - r->x - r->width, r->y, r->width, r->height));
-        }
+    string fn;
+    string::size_type fpos;
+    if((fpos = path.find_last_of("/")) != string::npos){
+        fn = path.substr(fpos+1);
     }
-    t = (double)cvGetTickCount() - t;
-    printf( "detection time = %g ms\n", t/((double)cvGetTickFrequency()*1000.) );
-    for( vector<Rect>::const_iterator r = faces.begin(); r != faces.end(); r++, i++ )
-    {
-        Mat smallImgROI;
-        vector<Rect> nestedObjects;
-        Point center;
-        Scalar color = colors[i%8];
-        int radius;
-
-        double aspect_ratio = (double)r->width/r->height;
-        if( 0.75 < aspect_ratio && aspect_ratio < 1.3 )
-        {
-            center.x = cvRound((r->x + r->width*0.5)*scale);
-            center.y = cvRound((r->y + r->height*0.5)*scale);
-            radius = cvRound((r->width + r->height)*0.25*scale);
-            circle( img, center, radius, color, 3, 8, 0 );
-        }
-        else
-            rectangle( img, cvPoint(cvRound(r->x*scale), cvRound(r->y*scale)),
-                       cvPoint(cvRound((r->x + r->width-1)*scale), cvRound((r->y + r->height-1)*scale)),
-                       color, 3, 8, 0);
-        if( nestedCascade.empty() )
-            continue;
-        smallImgROI = smallImg(*r);
-        nestedCascade.detectMultiScale( smallImgROI, nestedObjects,
-            1.1, 2, 0
-            //|CV_HAAR_FIND_BIGGEST_OBJECT
-            //|CV_HAAR_DO_ROUGH_SEARCH
-            //|CV_HAAR_DO_CANNY_PRUNING
-            |CV_HAAR_SCALE_IMAGE
-            ,
-            Size(30, 30) );
-        for( vector<Rect>::const_iterator nr = nestedObjects.begin(); nr != nestedObjects.end(); nr++ )
-        {
-            center.x = cvRound((r->x + nr->x + nr->width*0.5)*scale);
-            center.y = cvRound((r->y + nr->y + nr->height*0.5)*scale);
-            radius = cvRound((nr->width + nr->height)*0.25*scale);
-            circle( img, center, radius, color, 3, 8, 0 );
-        }
-    }
-    cv::imshow( "result", img );
+    else if((fpos = path.find_last_of("\\")) != string::npos){
+		fn = path.substr(fpos+1);
+	}
+	else{
+		fn = path;
+	}
+ 
+	if(without_extension && (fpos = fn.find_last_of(".")) != string::npos){
+		fn = fn.substr(0, fpos);
+	}
+ 
+	return fn;
 }
