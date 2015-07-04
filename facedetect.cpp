@@ -6,12 +6,16 @@
 #include <iostream>
 #include <iterator>
 #include <stdio.h>
-
+#include <boost/filesystem.hpp> // ファイル一覧を取得
+#include <boost/foreach.hpp>
 #include <sys/stat.h> // ディレクトリ・ファイル名の確認
 #include <sys/types.h> // ディレクトリ作成
 
 using namespace std;
 using namespace cv;
+using namespace boost;
+
+namespace fs = boost::filesystem;
 
 static void help()
 {
@@ -22,6 +26,8 @@ static void help()
 
 void detectAndSave(CascadeClassifier &cascade, string &srcfilename, string &outputpath);
 string ExtractFileName(const string &path, bool without_extension);
+bool isInImage(cv::Mat &img, cv::Rect &rect);
+cv::Rect fixRectSize(cv::Mat &img, cv::Rect &rect);
 
 string cascadeName = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
 
@@ -38,8 +44,6 @@ int main( int argc, const char** argv )
   string inputName;
 
   help();
-
-
 
   // 引数処理
   for( int i = 1; i < argc; i++ )
@@ -110,31 +114,37 @@ int main( int argc, const char** argv )
 	  return -1;
     }
 
-  // TODO:inputディレクトリのファイル一覧を取得する
+  //inputディレクトリのファイル一覧を取得する
+  std::vector<std::string> file_list;
+  const fs::path path(inputDir);
+  BOOST_FOREACH(const fs::path& p, std::make_pair(fs::directory_iterator(path),
+												  fs::directory_iterator())) {
+	if (!fs::is_directory(p))
+	  file_list.push_back(p.string());
+	  std::cout << p.filename() << std::endl;
+  }
+  
+  for(vector<string>::iterator iter = file_list.begin(); iter != file_list.end(); iter++){
+	detectAndSave(cascade, *iter, outputDir);	
+  }
 
-  string filename = "../src/test.jpg";
-  detectAndSave(cascade, filename, outputDir);
 
   return 0;
 
 }
 
+// 顔検出と保存
 void detectAndSave(CascadeClassifier &cascade, string &srcfilename, string &outputpath)
 {
   Mat inputImage = imread(srcfilename, 1);
   Mat grayImage;
   cvtColor(inputImage, grayImage,  CV_RGB2GRAY);
   Mat eqalizedImage = inputImage;
-  equalizeHist( grayImage, eqalizedImage );
+  // equalizeHist( grayImage, eqalizedImage );
   vector<Rect> faces;
 
   cascade.detectMultiScale( eqalizedImage, faces,
-							1.1, 2, 0
-							//|CV_HAAR_FIND_BIGGEST_OBJECT
-							//|CV_HAAR_DO_ROUGH_SEARCH
-							|CV_HAAR_SCALE_IMAGE
-							,
-							Size(30, 30) );
+							1.1, 1, 0, Size(1, 1) );
   // 切り出して保存
   int num = 1;
   for (vector<Rect>::iterator iter = faces.begin(); iter != faces.end(); iter ++) {
@@ -146,9 +156,12 @@ void detectAndSave(CascadeClassifier &cascade, string &srcfilename, string &outp
 						iter->y - (iter->height)*0.3,
 						(iter->width)*1.6,
 						(iter->height)*1.6);
+   
 	cout << *iter << endl;
-	cout << newRect << endl;cout << endl;
-	imwrite(saveImgpath, inputImage(newRect));
+	cout << newRect << endl;
+	Rect fixedRect = fixRectSize(inputImage, newRect);
+	cout << fixedRect << endl;cout << endl;
+	imwrite(saveImgpath, inputImage(fixedRect));
   }
 }
 
@@ -173,4 +186,26 @@ string ExtractFileName(const string &path, bool without_extension = true)
 	}
  
 	return fn;
+}
+
+// Rectの範囲が画像内かどうかチェック
+bool isInImage(cv::Mat &img, cv::Rect &rect)
+{
+  if(rect.x < 0) return false;
+  if(rect.y < 0) return false;
+  if(rect.x + rect.width > img.cols) return false;
+  if(rect.y + rect.height > img.rows) return false;
+  return true;
+}
+
+// Rectの範囲が画像内になければ修正する
+cv::Rect fixRectSize(cv::Mat &img, cv::Rect &rect)
+{
+  if(isInImage(img, rect)) return rect;
+  cv::Rect fixedRect = rect;
+  if(rect.x < 0) fixedRect.x = 0;
+  if(rect.y < 0) fixedRect.y = 0;
+  if(fixedRect.x + rect.width > img.cols) fixedRect.width = img.cols - fixedRect.x;
+  if(fixedRect.y + rect.height > img.rows) fixedRect.height = img.rows - fixedRect.y;
+  return fixedRect;
 }
