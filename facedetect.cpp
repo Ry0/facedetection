@@ -114,100 +114,33 @@ int main( int argc, const char** argv )
 	  return -1;
     }
 
+  // TODO:inputディレクトリのファイル一覧を取得する
+
+  string filename = "../src/test.jpg";
+  Mat inputImage = imread(filename, 1);
+  Mat grayImage, smallImg( cvRound (inputImage.rows/scale), cvRound(inputImage.cols/scale), CV_8UC1 );
+  cvtColor(inputImage, grayImage,  CV_RGB2GRAY);
+  vector<Rect> faces;
+  resize( grayImage, smallImg, smallImg.size(), 0, 0, INTER_LINEAR );
+  equalizeHist( smallImg, smallImg );
+  cascade.detectMultiScale( smallImg, faces,
+							1.1, 2, 0
+							//|CV_HAAR_FIND_BIGGEST_OBJECT
+							//|CV_HAAR_DO_ROUGH_SEARCH
+							|CV_HAAR_SCALE_IMAGE
+							,
+							Size(30, 30) );
+      // 矩形を描く
+    for (vector<Rect>::iterator iter = faces.begin(); iter != faces.end(); iter ++) {
+	  rectangle(inputImage, *iter, Scalar(255, 0, 0), 1);
+    }
+ 
+    // 表示
+    imshow("out", inputImage);
+    waitKey(0);
 
 	return 0;
-  if( inputName.empty() || (isdigit(inputName.c_str()[0]) && inputName.c_str()[1] == '\0') )
-    {
-	  capture = cvCaptureFromCAM( inputName.empty() ? 0 : inputName.c_str()[0] - '0' );
-	  int c = inputName.empty() ? 0 : inputName.c_str()[0] - '0' ;
-	  if(!capture) cout << "Capture from CAM " <<  c << " didn't work" << endl;
-    }
-  else if( inputName.size() )
-    {
-	  image = imread( inputName, 1 );
-	  if( image.empty() )
-        {
-		  capture = cvCaptureFromAVI( inputName.c_str() );
-		  if(!capture) cout << "Capture from AVI didn't work" << endl;
-        }
-    }
-  else
-    {
-	  image = imread( "lena.jpg", 1 );
-	  if(image.empty()) cout << "Couldn't read lena.jpg" << endl;
-    }
 
-  cvNamedWindow( "result", 1 );
-
-  if( capture )
-    {
-	  cout << "In capture ..." << endl;
-	  for(;;)
-        {
-		  IplImage* iplImg = cvQueryFrame( capture );
-		  frame = iplImg;
-		  if( frame.empty() )
-			break;
-		  if( iplImg->origin == IPL_ORIGIN_TL )
-			frame.copyTo( frameCopy );
-		  else
-			flip( frame, frameCopy, 0 );
-
-		  detectAndDraw( frameCopy, cascade, nestedCascade, scale, tryflip );
-
-		  if( waitKey( 10 ) >= 0 )
-			goto _cleanup_;
-        }
-
-	  waitKey(0);
-
-	_cleanup_:
-	  cvReleaseCapture( &capture );
-    }
-  else
-    {
-	  cout << "In image read" << endl;
-	  if( !image.empty() )
-        {
-		  detectAndDraw( image, cascade, nestedCascade, scale, tryflip );
-		  waitKey(0);
-        }
-	  else if( !inputName.empty() )
-        {
-		  /* assume it is a text file containing the
-			 list of the image filenames to be processed - one per line */
-		  FILE* f = fopen( inputName.c_str(), "rt" );
-		  if( f )
-            {
-			  char buf[1000+1];
-			  while( fgets( buf, 1000, f ) )
-                {
-				  int len = (int)strlen(buf), c;
-				  while( len > 0 && isspace(buf[len-1]) )
-					len--;
-				  buf[len] = '\0';
-				  cout << "file " << buf << endl;
-				  image = imread( buf, 1 );
-				  if( !image.empty() )
-                    {
-					  detectAndDraw( image, cascade, nestedCascade, scale, tryflip );
-					  c = waitKey(0);
-					  if( c == 27 || c == 'q' || c == 'Q' )
-						break;
-                    }
-				  else
-                    {
-					  cerr << "Aw snap, couldn't read image " << buf << endl;
-                    }
-                }
-			  fclose(f);
-            }
-        }
-    }
-
-  cvDestroyWindow("result");
-
-  return 0;
 }
 
 void detectAndDraw( Mat& img, CascadeClassifier& cascade,
