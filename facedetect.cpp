@@ -31,6 +31,51 @@ cv::Rect fixRectSize(cv::Mat &img, cv::Rect &rect);
 
 string cascadeName = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
 
+class Argument
+{
+public:
+  Argument(string name)
+	:name_(name), prefix_name_(name), prefix_name_len_(name.length()), flag_(false){}
+  ~Argument(){}
+  int prefix_compare(char* argv){
+	int result = prefix_name_.compare(0, prefix_name_len_, argv, prefix_name_len_);
+	if(result == 0) { flag_ = true; }
+	return result
+  }
+  void rm_prefix(){
+	name_.assign(prefix_name_.c_str() + prefix_name_len_);
+  }
+private:
+  string prefix_name_;
+  stirng prefix_name_len_;
+  stirng name_;
+  bool flag_;
+};
+
+
+class ArgumentParser
+{
+public:
+  ArgumentParser(std::vector<string> options):
+	inputDir_(options[0]), outputDir_(options[1]){}
+  ~ArgumentParser(){}
+  perse(int argc, const char** argv){
+	for( int i = 1; i < argc; i++ ){
+	  if( inputDir_.prefix_compare( argv[i] ) == 0){
+		inputDir_.rm_prefix();
+	  }
+	  else if( outputDir_.prefix_compare( argv[i] ) == 0){
+		outputDir_.rm_prefix();
+	  }else{
+		cerr << "WARNING: Unknown option %s" << argv[i] << endl;
+	  }
+    }
+  }
+private:
+  Argument inputDir_;
+  Argument outputDir_;
+};
+
 int main( int argc, const char** argv )
 {
   Mat frame, frameCopy, image;
@@ -110,7 +155,6 @@ int main( int argc, const char** argv )
 	  cerr << "ERROR: Could not load classifier cascade" << endl;
 	  cout << "Please Check a cascade file is exist at " << 
 		"\"" << cascadeName << "\"" << endl;
-	  help();
 	  return -1;
     }
 
@@ -121,7 +165,7 @@ int main( int argc, const char** argv )
 												  fs::directory_iterator())) {
 	if (!fs::is_directory(p))
 	  file_list.push_back(p.string());
-	  std::cout << p.filename() << std::endl;
+	std::cout << p.filename() << std::endl;
   }
   
   for(vector<string>::iterator iter = file_list.begin(); iter != file_list.end(); iter++){
@@ -169,23 +213,23 @@ void detectAndSave(CascadeClassifier &cascade, string &srcfilename, string &outp
 // http://www.slis.tsukuba.ac.jp/~fujisawa.makoto.fu/cgi-bin/wiki/index.php?string%A4%CB%A4%E8%A4%EB%CA%B8%BB%FA%CE%F3%BD%E8%CD%FD#w175146e
 string ExtractFileName(const string &path, bool without_extension = true)
 {
-    string fn;
-    string::size_type fpos;
-    if((fpos = path.find_last_of("/")) != string::npos){
-        fn = path.substr(fpos+1);
-    }
-    else if((fpos = path.find_last_of("\\")) != string::npos){
-		fn = path.substr(fpos+1);
-	}
-	else{
-		fn = path;
-	}
+  string fn;
+  string::size_type fpos;
+  if((fpos = path.find_last_of("/")) != string::npos){
+	fn = path.substr(fpos+1);
+  }
+  else if((fpos = path.find_last_of("\\")) != string::npos){
+	fn = path.substr(fpos+1);
+  }
+  else{
+	fn = path;
+  }
  
-	if(without_extension && (fpos = fn.find_last_of(".")) != string::npos){
-		fn = fn.substr(0, fpos);
-	}
+  if(without_extension && (fpos = fn.find_last_of(".")) != string::npos){
+	fn = fn.substr(0, fpos);
+  }
  
-	return fn;
+  return fn;
 }
 
 // Rectの範囲が画像内かどうかチェック
