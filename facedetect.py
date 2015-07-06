@@ -69,7 +69,7 @@ def facedetect(image_path, output_directory, num):
     #カスケード分類器の特徴量を取得する
     cascade = cv2.CascadeClassifier(cascade_path)
     #物体認識（顔認識）の実行
-    facerect = cascade.detectMultiScale(image_gray, scaleFactor=1.1, minNeighbors=1, minSize=(1, 1))
+    facerect = cascade.detectMultiScale(image_gray, scaleFactor=1.1, minNeighbors=1, minSize=(50, 50))
     if len(facerect) <= 0:
         return 0
 
@@ -88,7 +88,8 @@ def facedetect(image_path, output_directory, num):
         # ファイルネームの決定
         img_name = "./" + output_directory + "/" + image_path + "_" + str(num) + '.jpg'
         # 出力窓を調整
-        cv2.imwrite(img_name, image[y-h*0.2:y+h*1.2, x-w*0.2:x+h*1.2])
+        cut_img = image[y-h*0.2:y+h*1.2, x-w*0.2:x+h*1.2]
+        cv2.imwrite(img_name, cv2.resize(cut_img,(100,100)))
         num += 1
     return num
 
