@@ -31,50 +31,50 @@ cv::Rect fixRectSize(cv::Mat &img, cv::Rect &rect);
 
 string cascadeName = "/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml";
 
-class Argument
-{
-public:
-  Argument(string name)
-	:name_(name), prefix_name_(name), prefix_name_len_(name.length()), flag_(false){}
-  ~Argument(){}
-  int prefix_compare(char* argv){
-	int result = prefix_name_.compare(0, prefix_name_len_, argv, prefix_name_len_);
-	if(result == 0) { flag_ = true; }
-	return result
-  }
-  void rm_prefix(){
-	name_.assign(prefix_name_.c_str() + prefix_name_len_);
-  }
-private:
-  string prefix_name_;
-  stirng prefix_name_len_;
-  stirng name_;
-  bool flag_;
-};
+// class Argument
+// {
+// public:
+//   Argument(string name)
+// 	:name_(name), prefix_name_(name), prefix_name_len_(name.length()), flag_(false){}
+//   ~Argument(){}
+//   int prefix_compare(char* argv){
+// 	int result = prefix_name_.compare(0, prefix_name_len_, argv, prefix_name_len_);
+// 	if(result == 0) { flag_ = true; }
+// 	return result
+//   }
+//   void rm_prefix(){
+// 	name_.assign(prefix_name_.c_str() + prefix_name_len_);
+//   }
+// private:
+//   string prefix_name_;
+//   stirng prefix_name_len_;
+//   stirng name_;
+//   bool flag_;
+// };
 
 
-class ArgumentParser
-{
-public:
-  ArgumentParser(std::vector<string> options):
-	inputDir_(options[0]), outputDir_(options[1]){}
-  ~ArgumentParser(){}
-  perse(int argc, const char** argv){
-	for( int i = 1; i < argc; i++ ){
-	  if( inputDir_.prefix_compare( argv[i] ) == 0){
-		inputDir_.rm_prefix();
-	  }
-	  else if( outputDir_.prefix_compare( argv[i] ) == 0){
-		outputDir_.rm_prefix();
-	  }else{
-		cerr << "WARNING: Unknown option %s" << argv[i] << endl;
-	  }
-    }
-  }
-private:
-  Argument inputDir_;
-  Argument outputDir_;
-};
+// class ArgumentParser
+// {
+// public:
+//   ArgumentParser(std::vector<string> options):
+// 	inputDir_(options[0]), outputDir_(options[1]){}
+//   ~ArgumentParser(){}
+//   perse(int argc, const char** argv){
+// 	for( int i = 1; i < argc; i++ ){
+// 	  if( inputDir_.prefix_compare( argv[i] ) == 0){
+// 		inputDir_.rm_prefix();
+// 	  }
+// 	  else if( outputDir_.prefix_compare( argv[i] ) == 0){
+// 		outputDir_.rm_prefix();
+// 	  }else{
+// 		cerr << "WARNING: Unknown option %s" << argv[i] << endl;
+// 	  }
+//     }
+//   }
+// private:
+//   Argument inputDir_;
+//   Argument outputDir_;
+// };
 
 int main( int argc, const char** argv )
 {
@@ -159,10 +159,11 @@ int main( int argc, const char** argv )
     }
 
   //inputディレクトリのファイル一覧を取得する
+  // http://boostjp.github.io/tips/filesystem.html
   std::vector<std::string> file_list;
   const fs::path path(inputDir);
-  BOOST_FOREACH(const fs::path& p, std::make_pair(fs::directory_iterator(path),
-												  fs::directory_iterator())) {
+  BOOST_FOREACH(const fs::path& p, std::make_pair(fs::recursive_directory_iterator(path),
+												  fs::recursive_directory_iterator())) {
 	if (!fs::is_directory(p))
 	  file_list.push_back(p.string());
 	std::cout << p.filename() << std::endl;
@@ -188,7 +189,7 @@ void detectAndSave(CascadeClassifier &cascade, string &srcfilename, string &outp
   vector<Rect> faces;
 
   cascade.detectMultiScale( eqalizedImage, faces,
-							1.1, 1, 0, Size(1, 1) );
+							1.1, 1, 0, Size(50, 50) );
   // 切り出して保存
   int num = 1;
   for (vector<Rect>::iterator iter = faces.begin(); iter != faces.end(); iter ++) {
