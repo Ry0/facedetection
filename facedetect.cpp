@@ -170,7 +170,11 @@ int main( int argc, const char** argv )
   }
   
   for(vector<string>::iterator iter = file_list.begin(); iter != file_list.end(); iter++){
-	detectAndSave(cascade, *iter, outputDir);	
+	try{
+	  detectAndSave(cascade, *iter, outputDir);
+	}catch(...){
+	  cerr << "なんか例外" << endl;
+ 	}
   }
 
 
