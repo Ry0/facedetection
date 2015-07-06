@@ -65,7 +65,7 @@ def facedetect(image_path, output_directory, num):
     #ファイル読み込み
     image = cv2.imread(image_path)
     #グレースケール変換
-    image_gray = cv2.cvtColor(image, cv2.cv.CV_BGR2GRAY)
+    image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     #カスケード分類器の特徴量を取得する
     cascade = cv2.CascadeClassifier(cascade_path)
     #物体認識（顔認識）の実行
@@ -89,7 +89,7 @@ def facedetect(image_path, output_directory, num):
         img_name = "./" + output_directory + "/" + image_path + "_" + str(num) + '.jpg'
         # 出力窓を調整
         cut_img = image[y-h*0.2:y+h*1.2, x-w*0.2:x+h*1.2]
-        cv2.imwrite(img_name, cv2.resize(cut_img,(100,100)))
+        cv2.imwrite(img_name, cut_img,(100,100))
         num += 1
     return num
 
@@ -119,7 +119,10 @@ if __name__ == "__main__":
     # 元画像のファイルの数だけ顔認識を続ける
     for file_name in file_names:
         # print file_name
-        facedetect(file_name, directory[2], 1)
+        try:
+            facedetect(file_name, directory[2], 1)
+        except:
+            print "Oops! Illegal image... Skip!!"
         p.update(i+1)
         i += 1
 
