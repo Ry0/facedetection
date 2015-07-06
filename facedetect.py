@@ -5,6 +5,8 @@ import sys
 import os
 import os.path
 import re
+from progressbar import ProgressBar
+import time
 
 
 def input_arg(argvs, argc):
@@ -89,9 +91,14 @@ if __name__ == "__main__":
     create_directory(directory[2])
 
     num = 1
+    i = 0
+    p = ProgressBar(len(file_names))
+
     # 元画像のファイルの数だけ顔認識を続ける
     for file_name in file_names:
-        print file_name
+        # print file_name
         facedetect(file_name, directory[2], num)
+        p.update(i+1)
+        i += 1
 
     print "Complete !"
