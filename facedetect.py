@@ -35,6 +35,23 @@ def input_filename(directory_path):
     return file_array
 
 
+def fild_all_files(directory):
+    for root, dirs, files in os.walk(directory):
+        yield root
+        for file in files:
+            yield os.path.join(root, file)
+
+
+def filenamelist(src_directory):
+    # サブディレクトリを想定
+    file_array = []
+    for file in fild_all_files(src_directory):
+        # .pngか.jpgのときリストに格納
+        if file.endswith(".jpg") or file.endswith(".png"):
+            file_array.append(file)
+
+    return file_array
+
 def create_directory(output_directory):
     if os.path.isdir(output_directory) == 0:
         print "Not exist \"%s\" folder. So create it." % output_directory
@@ -54,7 +71,7 @@ def facedetect(image_path, output_directory, num):
     #物体認識（顔認識）の実行
     facerect = cascade.detectMultiScale(image_gray, scaleFactor=1.1, minNeighbors=1, minSize=(1, 1))
     if len(facerect) <= 0:
-        exit()
+        return 0
 
     for rect in facerect:
         # print rect
@@ -86,18 +103,22 @@ if __name__ == "__main__":
     # まず元画像があるディレクトリを持ってくる
     image_path = directory[1]
     # file_namesにディレクトリ込みのファイルネームを格納
-    file_names = input_filename(image_path)
+    file_names = filenamelist(image_path)
     #引数にとった出力先ディレクトリの存在確認 & 作成
     create_directory(directory[2])
 
-    num = 1
     i = 0
-    p = ProgressBar(len(file_names))
+
+    if len(file_names) == 0:
+        print "Not exist jpg or png file !"
+    else :
+        p = ProgressBar(len(file_names))
+        print "File num = ",len(file_names)
 
     # 元画像のファイルの数だけ顔認識を続ける
     for file_name in file_names:
         # print file_name
-        facedetect(file_name, directory[2], num)
+        facedetect(file_name, directory[2], 1)
         p.update(i+1)
         i += 1
 
