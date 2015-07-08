@@ -6,8 +6,6 @@ import os
 import os.path
 import re
 from progressbar import ProgressBar
-import time
-
 
 def input_arg(argvs, argc):
     if (argc != 3):   # 引数が足りない場合は、その旨を表示
@@ -69,7 +67,7 @@ def facedetect(image_path, output_directory, num):
     #カスケード分類器の特徴量を取得する
     cascade = cv2.CascadeClassifier(cascade_path)
     #物体認識（顔認識）の実行
-    facerect = cascade.detectMultiScale(image_gray, scaleFactor=1.1, minNeighbors=1, minSize=(50, 50))
+    facerect = cascade.detectMultiScale(image_gray, scaleFactor=1.1, minNeighbors=1, minSize=(250, 250))
     if len(facerect) <= 0:
         return 0
 
@@ -90,12 +88,17 @@ def facedetect(image_path, output_directory, num):
         # 出力窓を調整
         cut_img = image[y-h*0.2:y+h*1.2, x-w*0.2:x+h*1.2]
         cv2.imwrite(img_name, cut_img,(100,100))
+        # 出力窓が画像エリアからはみ出て不正な画像ファイルができたときは削除する
+        if os.path.getsize(img_name) == 0:
+            os.remove(img_name)
+            # print "Delete broken file!"
         num += 1
     return num
 
 
 if __name__ == "__main__":
     cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml'
+    # cascade_path = '/usr/local/share/OpenCV/haarcascades/lbpcascade_animeface.xml'
 
     argvs = sys.argv   # コマンドライン引数を格納したリストの取得
     argc = len(argvs)  # 引数の個数
