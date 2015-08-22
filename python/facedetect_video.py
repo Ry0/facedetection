@@ -56,7 +56,8 @@ def facedetect(image_path, output_directory, num):
 
 if __name__ == "__main__":
     # 分類器へのパス
-    cascade_path = "/usr/local/share/OpenCV/haarcascades/lbpcascade_animeface.xml"
+    cascade_path = '/usr/local/share/OpenCV/haarcascades/haarcascade_frontalface_alt.xml'
+    # cascade_path = "/usr/local/share/OpenCV/haarcascades/lbpcascade_animeface.xml"
 
     argvs = sys.argv   # コマンドライン引数を格納したリストの取得
     argc = len(argvs)  # 引数の個数
